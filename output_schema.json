@@ -1,0 +1,136 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "AppraisalReportHistoryJSONVersion": {
+            "type": "string",
+            "enum": [
+                "0.1"
+            ],
+            "minLength": 2,
+            "maxLength": 50
+        },
+        "RequestorCode": {
+            "type": "string"
+        },
+        "GrossTurnAroundTime": {
+            "type": "integer"
+        },
+        "NetTurnAroundTime": {
+            "type": "integer"
+        },
+        "StopClockTime": {
+            "type": "string",
+            "minLength": 27,
+            "maxLength": 27
+        },
+        "RecordEffectiveTimeStamp": {
+            "type": "string",
+            "minLength": 27,
+            "maxLength": 27
+        },
+        "Electrical": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "Fuses": {
+                        "type": "string"
+                    },
+                    "Breakers": {
+                        "type": "string"
+                    },
+                    "RatedCapacity": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "ExteriorFinish": {
+            "type": "object",
+            "properties": {
+                "BrickVeneer": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "SolidBrick": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "StoneVeneer": {
+                    "type": "string"
+                },
+                "SolidStone": {
+                    "type": "string"
+                },
+                "Stucco": {
+                    "type": "string"
+                }
+            }
+        },
+        "FloorArea": {
+            "type": "object",
+            "properties": {
+                "Main": {
+                    "type": "integer"
+                },
+                "Second": {
+                    "type": "integer"
+                },
+                "Third": {
+                    "type": "integer"
+                },
+                "Total": {
+                    "type": "integer"
+                },
+                "UnitofMeasureCode": {
+                    "type": "string"
+                }
+            }
+        },
+        "Heating": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "HotWater": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "Baseboard": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "ForcedAir": {
+                        "type": "string"
+                    },
+                    "OtherDesc": {
+                        "type": "string"
+                    },
+                    "FuelTypeDescription": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "required": [
+        "AppraisalReportHistoryJSONVersion",
+        "Electrical",
+        "ExteriorFinish",
+        "ExteriorFinish.BrickVeneer",
+        "FloorArea",
+        "FloorArea.Main",
+        "FloorArea.Second",
+        "Heating",
+        "Heating.HotWater"
+    ]
+}

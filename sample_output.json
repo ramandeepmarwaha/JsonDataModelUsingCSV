@@ -1,0 +1,46 @@
+{
+    "AppraisalReportHistoryJSONVersion": "0.1",
+    "RequestorCode": "example_string",
+    "GrossTurnAroundTime": 0,
+    "NetTurnAroundTime": 0,
+    "StopClockTime": "example_string",
+    "RecordEffectiveTimeStamp": "example_string",
+    "Electrical": [
+        {
+            "Fuses": "example_string",
+            "Breakers": "example_string",
+            "RatedCapacity": 0
+        }
+    ],
+    "ExteriorFinish": {
+        "BrickVeneer": [
+            "example_string"
+        ],
+        "SolidBrick": [
+            "example_string"
+        ],
+        "StoneVeneer": "example_string",
+        "SolidStone": "example_string",
+        "Stucco": "example_string"
+    },
+    "FloorArea": {
+        "Main": 0,
+        "Second": 0,
+        "Third": 0,
+        "Total": 0,
+        "UnitofMeasureCode": "example_string"
+    },
+    "Heating": [
+        {
+            "HotWater": [
+                "example_string"
+            ],
+            "Baseboard": [
+                "example_string"
+            ],
+            "ForcedAir": "example_string",
+            "OtherDesc": "example_string",
+            "FuelTypeDescription": "example_string"
+        }
+    ]
+}
