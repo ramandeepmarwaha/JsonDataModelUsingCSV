@@ -62,6 +62,9 @@ def create_json_schema(data):
         required = row['Required'].strip().lower() == 'yes'
         enums = row.get('Enum Values', '').strip('"').split(',') if 'Enum Values' in row and pd.notna(row['Enum Values']) else None
         is_array = row['Is Array'].strip().lower() == 'yes'
+        description = row.get('Description', '').strip()  # Get the description if available
+        format_type = row.get('Format', '').strip().lower()  # Get the format if available
+        deprecated = row.get('Deprecated', '').strip().lower() == 'yes'  # Check if the field is marked as deprecated
 
         # Initialize field schema and sample value
         field_schema = {}
@@ -97,12 +100,23 @@ def create_json_schema(data):
             # Assign sample values based on type
             if data_type == 'string':
                 sample_value = "example_string"
+                # Add format if available
+                if format_type:
+                    field_schema["format"] = format_type
             elif data_type == 'integer':
                 sample_value = 0  # Default integer sample
             elif data_type == 'boolean':
                 sample_value = True
             if enums:
                 sample_value = enums[0].strip()
+
+        # Add description if present
+        if description:
+            field_schema["description"] = description
+
+        # Add deprecated flag if applicable
+        if deprecated:
+            field_schema["deprecated"] = True
 
         # Add constraints if applicable
         if 'Min Length' in row and pd.notna(row['Min Length']):
