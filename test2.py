@@ -11,48 +11,53 @@ def create_json_schema(data):
     }
     sample_json = {}
 
-    def add_property(field_path, field_schema, sample_value):
+    def add_property(field_path, field_schema, sample_value, required):
         keys = field_path.split('.')
         current = json_schema["properties"]
 
+        # Navigate through the keys to set up the schema structure
         for key in keys[:-1]:
             if key not in current:
-                # Initialize an object for the current key
-                current[key] = {"type": "object", "properties": {}}
-            
-            # Check if the current type is an array and handle accordingly
-            if current[key]["type"] == "array":
-                # If it's an array, navigate into the 'items' for further nesting
-                current[key]["items"] = current[key].get("items", {})
-                if "type" not in current[key]["items"]:
-                    current[key]["items"]["type"] = "object"
-                    current[key]["items"]["properties"] = {}
-
+                if "items" in current.get(key, {}):
+                    current[key] = {"type": "array", "items": {"type": "object", "properties": {}}}
+                else:
+                    current[key] = {"type": "object", "properties": {}}
+            elif current[key]["type"] == "array":
+                if "items" not in current[key]:
+                    current[key]["items"] = {"type": "object", "properties": {}}
                 current = current[key]["items"]["properties"]
             else:
                 current = current[key]["properties"]
 
-        # Ensure the final key exists in the schema
+        # Add the field schema
         if keys[-1] not in current:
             current[keys[-1]] = field_schema
         else:
-            # If it exists, we can merge or update the existing schema
             current[keys[-1]].update(field_schema)
 
-        # Handle sample values
+        # Add to the required fields of the parent object
+        if required:
+            parent = json_schema
+            for key in keys[:-1]:
+                parent = parent["properties"][key]
+            if "required" not in parent:
+                parent["required"] = []
+            field_name_cleaned = keys[-1].strip()
+            if field_name_cleaned not in parent["required"]:
+                parent["required"].append(field_name_cleaned)
+
+        # Create the sample JSON
         current_sample = sample_json
         for key in keys[:-1]:
             if key not in current_sample:
-                # If it's an array, initialize it as a list
-                if "type" in json_schema["properties"].get(key, {}) and json_schema["properties"][key]["type"] == "array":
-                    current_sample[key] = [{}]  # Initialize an array of objects
-                else:
-                    current_sample[key] = {}
+                current_sample[key] = {}
             current_sample = current_sample[key]
 
-        # If it's an array, place the sample value inside the array
+        # Handle assignment for the last key
         if isinstance(current_sample, list):
-            current_sample[0][keys[-1]] = sample_value  # Use the first element of the array
+            if len(current_sample) == 0:
+                current_sample.append({})
+            current_sample[0][keys[-1]] = sample_value
         else:
             current_sample[keys[-1]] = sample_value
 
@@ -62,87 +67,92 @@ def create_json_schema(data):
         required = row['Required'].strip().lower() == 'yes'
         enums = row.get('Enum Values', '').strip('"').split(',') if 'Enum Values' in row and pd.notna(row['Enum Values']) else None
         is_array = row['Is Array'].strip().lower() == 'yes'
-        description = row.get('Description', '').strip()  # Get the description if available
-        format_type = row.get('Format', '').strip().lower()  # Get the format if available
-        deprecated = row.get('Deprecated', '').strip().lower() == 'yes'  # Check if the field is marked as deprecated
+        description = str(row.get('Description', '')).strip()
+        format_type = str(row.get('Format', '')).strip().lower()
+        deprecated = row.get('Deprecated', '').strip().lower() == 'yes'
+        pattern = str(row.get('Pattern', '')).strip() if 'Pattern' in row and pd.notna(row['Pattern']) else None
 
-        # Initialize field schema and sample value
         field_schema = {}
-        sample_value = None
 
-        # Handle data types and structures
+        # Initialize the field schema based on type
         if data_type == 'object':
             if is_array:
-                # If it's an array of objects
                 field_schema = {
                     "type": "array",
+                    "minItems": int(row['Min Items']) if 'Min Items' in row and pd.notna(row['Min Items']) else None,
+                    "maxItems": int(row['Max Items']) if 'Max Items' in row and pd.notna(row['Max Items']) else None,
                     "items": {
                         "type": "object",
                         "properties": {}
                     }
                 }
-                sample_value = [{}]  # Example for an array of objects
+                sample_value = [{}]
             else:
-                field_schema = {"type": "object", "properties": {}}
+                field_schema = {
+                    "type": "object",
+                    "properties": {}
+                }
                 sample_value = {}
+        
         elif is_array:
-            # Generic array type (string, number, etc.)
             field_schema = {
                 "type": "array",
-                "items": {"type": data_type}  # Array of the specified data type
+                "minItems": int(row['Min Items']) if 'Min Items' in row and pd.notna(row['Min Items']) else None,
+                "maxItems": int(row['Max Items']) if 'Max Items' in row and pd.notna(row['Max Items']) else None,
+                "items": {
+                    "type": data_type
+                }
             }
-            sample_value = [f"example_{data_type}"]  # Example for an array of basic types
+            sample_value = [f"example_{data_type}"]
+
         else:
             field_schema = {"type": data_type}
-            if enums:
-                field_schema["enum"] = [enum.strip() for enum in enums]
 
-            # Assign sample values based on type
-            if data_type == 'string':
-                sample_value = "example_string"
-                # Add format if available
-                if format_type:
-                    field_schema["format"] = format_type
-            elif data_type == 'integer':
-                sample_value = 0  # Default integer sample
-            elif data_type == 'boolean':
-                sample_value = True
-            if enums:
-                sample_value = enums[0].strip()
+        # Add constraints
+        if enums:
+            field_schema["enum"] = [enum.strip() for enum in enums]
+        if data_type == 'string':
+            sample_value = "example_string"
+            if format_type != "nan":
+                field_schema["format"] = format_type
+            if pattern:
+                field_schema["pattern"] = pattern
+        elif data_type == 'integer':
+            sample_value = 0
+        elif data_type == 'boolean':
+            sample_value = True
+        if enums:
+            sample_value = enums[0].strip()
 
-        # Add description if present
-        if description:
+        # Add optional constraints
+        if description != "nan":
             field_schema["description"] = description
-
-        # Add deprecated flag if applicable
-        if deprecated:
+        if deprecated == "yes":
             field_schema["deprecated"] = True
 
-        # Add constraints if applicable
+        # Handle length constraints for strings
         if 'Min Length' in row and pd.notna(row['Min Length']):
             field_schema["minLength"] = int(row['Min Length'])
         if 'Max Length' in row and pd.notna(row['Max Length']):
             field_schema["maxLength"] = int(row['Max Length'])
-        if 'Min Items' in row and pd.notna(row['Min Items']):
-            field_schema["minItems"] = int(row['Min Items'])
-        if 'Max Items' in row and pd.notna(row['Max Items']):
-            field_schema["maxItems"] = int(row['Max Items'])
+
         if 'Default Value' in row and pd.notna(row['Default Value']):
             sample_value = row['Default Value'].strip('"')
 
-        # Debugging output to track the properties being added
-        print(f"Adding property: {field_name} with schema: {field_schema}")
+        add_property(field_name, field_schema, sample_value, required)
 
-        # Add property to schema and sample JSON
-        add_property(field_name, field_schema, sample_value)
+    # Clean up empty 'required' lists from all levels
+    def remove_empty_required(obj):
+        if isinstance(obj, dict):
+            if "required" in obj and not obj["required"]:
+                del obj["required"]
+            for value in obj.values():
+                remove_empty_required(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                remove_empty_required(item)
 
-        # Handle required fields
-        if required:
-            required_path = field_name.split('.')
-            for i in range(len(required_path)):
-                parent_path = '.'.join(required_path[:i + 1])
-                if parent_path not in json_schema["required"]:
-                    json_schema["required"].append(parent_path)
+    remove_empty_required(json_schema)
 
     return json_schema, sample_json
 
@@ -157,10 +167,10 @@ data = pd.read_csv(excel_file)
 json_schema, sample_json = create_json_schema(data)
 
 # Save JSON Schema and Sample JSON to files
-with open('output_schema.json', 'w') as schema_file:
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output_schema.json'), 'w') as schema_file:
     json.dump(json_schema, schema_file, indent=4)
 
-with open('sample_output.json', 'w') as sample_file:
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sample_output.json'), 'w') as sample_file:
     json.dump(sample_json, sample_file, indent=4)
 
 print("JSON Schema and Sample JSON created successfully.")
